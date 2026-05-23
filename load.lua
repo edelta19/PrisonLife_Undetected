@@ -1,61 +1,55 @@
 local baseUrl = "https://raw.githubusercontent.com/edelta19/PrisonLife_Undetected/main/"
 
-local function fetchFile(fileName)
-    local success, response = pcall(function()
-        return game:HttpGet(baseUrl .. fileName)
-    end)
-
-    if not success then
-        warn("HTTP FAILED:", fileName)
-        warn(response)
-        return nil
-    end
-
-    print("Fetched:", fileName)
-
-    return response
-end
-
 local function safeLoad(fileName)
-    print("Loading:", fileName)
-
-    local content = fetchFile(fileName)
-
-    if not content then
+    local content
+    local success, _ = pcall(function()
+        content = game:HttpGet(baseUrl .. fileName, true)
+    end)
+    
+    if not success or not content or content:find("404: Not Found") or content == "" then
+        warn("CRITICAL: Failed to download file: " .. fileName)
         return false
     end
-
+    
     local func, parseError = loadstring(content)
-
     if not func then
-        warn("LOADSTRING ERROR:", fileName)
-        warn(parseError)
+        warn("SYNTAX ERROR in " .. fileName .. ": " .. tostring(parseError))
         return false
     end
-
-    local success, runtimeError = pcall(func)
-
-    if not success then
-        warn("RUNTIME ERROR IN:", fileName)
-        warn(runtimeError)
+    
+    local runSuccess, runError = pcall(func)
+    if not runSuccess then
+        warn("RUNTIME ERROR in " .. fileName .. ": " .. tostring(runError))
         return false
     end
-
-    print("SUCCESS:", fileName)
-
+    
     return true
 end
 
-safeLoad("UI_Setup.lua")
+-- 1. Load Core UI First
+if safeLoad("UI_Setup.lua") then
+    -- 2. Wait until global table finishes preparing completely
+    local timeout = 5
+    local elapsed = 0
+    while not (_G.SecuritySystem and _G.SecuritySystem.invisBtn) do
+        task.wait(0.1)
+        elapsed = elapsed + 0.1
+        if elapsed >= timeout then
+            warn("Loader timed out waiting for UI setup!")
+            return
+        end
+    end
 
-local files = {
-    "GhostMode.lua",
-    "MouseTeleport.lua",
-    "TeleportMenu.lua",
-    "CollisionLogic.lua",
-    "StealthFly.lua"
-}
+    -- 3. Load Features safely
+    local features = {
+        "GhostMode.lua",
+        "MouseTeleport.lua",
+        "TeleportMenu.lua",
+        "CollisionLogic.lua",
+        "StealthFly.lua"
+    }
 
-for _, file in ipairs(files) do
-    safeLoad(file)
+    for _, file in ipairs(features) do
+        safeLoad(file)
+    end
 end
