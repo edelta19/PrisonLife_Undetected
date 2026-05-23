@@ -14,20 +14,14 @@ local bodyGyro
 local currentVelocity = Vector3.zero
 
 local function toggleFly()
+    -- ALWAYS look up the current character model actively
     local character = player.Character
-    if not character then 
-        warn("Stealth Fly: Character not found!")
-        return 
-    end
+    if not character then return end
     
-    -- Safe checks: Make sure Humanoid and RootPart actually exist before using them
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     
-    if not humanoid or not humanoidRootPart then 
-        warn("Stealth Fly: Humanoid or HumanoidRootPart is missing!")
-        return 
-    end
+    if not humanoid or not humanoidRootPart then return end
 
     flying = not flying
 
@@ -60,6 +54,15 @@ local function toggleFly()
     end
 end
 
+-- Force stop flying automatically if the player dies/respawns
+player.CharacterAdded:Connect(function()
+    flying = false
+    flyBtn.Text = "Stealth Fly: OFF [ F ]"
+    flyBtn.BackgroundColor3 = Color3.fromRGB(8, 15, 25)
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if bodyGyro then bodyGyro:Destroy() end
+end)
+
 flyBtn.MouseButton1Click:Connect(toggleFly)
 
 UIS.InputBegan:Connect(function(input, processed)
@@ -71,12 +74,18 @@ end)
 
 RunService.RenderStepped:Connect(function()
     if not flying then return end
-    if not bodyVelocity or not bodyGyro then return end
     
     local character = player.Character
     if not character then return end
+    
     local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return end
+    
+    -- If the body physical instances change or drop out, recreate or exit gracefully
+    if not bodyVelocity or bodyVelocity.Parent ~= hrp then
+        return toggleFly()
+    end
 
     local camera = workspace.CurrentCamera
     local direction = Vector3.zero
@@ -106,7 +115,6 @@ RunService.RenderStepped:Connect(function()
     local targetVelocity = direction * MAX_SPEED
     currentVelocity = currentVelocity:Lerp(targetVelocity, ACCELERATION_SMOOTHING)
 
-    -- Extra safety to ensure bodyVelocity wasn't destroyed mid-flight
     if bodyVelocity and bodyVelocity.Parent then
         bodyVelocity.Velocity = currentVelocity
     end
