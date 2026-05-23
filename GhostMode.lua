@@ -6,11 +6,17 @@ local isInvisible = false
 local originalTransparencies = {}
 
 invisBtn.MouseButton1Click:Connect(function()
-    local character = player.Character
-    -- SAFELY CHECK: If character or root part is missing, don't break
-    if not character or not character:FindFirstChild("HumanoidRootPart") then 
-        warn("Character not fully loaded yet!")
+    -- ALWAYS get the live character model when clicked
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character then 
+        warn("Ghost Mode: Character model missing!")
         return 
+    end
+
+    local hrp = character:WaitForChild("HumanoidRootPart", 3)
+    if not hrp then
+        warn("Ghost Mode: HumanoidRootPart missing!")
+        return
     end
 
     isInvisible = not isInvisible
@@ -20,7 +26,7 @@ invisBtn.MouseButton1Click:Connect(function()
         invisBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 40)
         
         for _, part in pairs(character:GetDescendants()) do
-            if part:IsA("BasePart") or part:IsA("Decal") then
+            if part and (part:IsA("BasePart") or part:IsA("Decal")) then
                 if not originalTransparencies[part] then
                     originalTransparencies[part] = part.Transparency
                 end
@@ -34,9 +40,10 @@ invisBtn.MouseButton1Click:Connect(function()
         invisBtn.BackgroundColor3 = Color3.fromRGB(8, 15, 25)
         
         for _, part in pairs(character:GetDescendants()) do
-            if originalTransparencies[part] then
+            if part and originalTransparencies[part] then
                 part.Transparency = originalTransparencies[part]
             end
         end
+        table.clear(originalTransparencies)
     end
 end)
