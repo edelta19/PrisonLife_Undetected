@@ -14,18 +14,28 @@ local bodyGyro
 local currentVelocity = Vector3.zero
 
 local function toggleFly()
-    flying = not flying
     local character = player.Character
-    if not character then return end
+    if not character then 
+        warn("Stealth Fly: Character not found!")
+        return 
+    end
+    
+    -- Safe checks: Make sure Humanoid and RootPart actually exist before using them
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoidRootPart or not humanoid then return end
+    
+    if not humanoid or not humanoidRootPart then 
+        warn("Stealth Fly: Humanoid or HumanoidRootPart is missing!")
+        return 
+    end
+
+    flying = not flying
 
     if flying then
         flyBtn.Text = "Stealth Fly: ON [ F ]"
         flyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 40) 
         
-        humanid:ChangeState(Enum.HumanoidStateType.Freefall)
+        humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
         currentVelocity = Vector3.zero
         
         bodyVelocity = Instance.new("BodyVelocity")
@@ -44,7 +54,9 @@ local function toggleFly()
         if bodyVelocity then bodyVelocity:Destroy() end
         if bodyGyro then bodyGyro:Destroy() end
         
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        if humanoid and humanoid.Parent then
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
     end
 end
 
@@ -94,6 +106,11 @@ RunService.RenderStepped:Connect(function()
     local targetVelocity = direction * MAX_SPEED
     currentVelocity = currentVelocity:Lerp(targetVelocity, ACCELERATION_SMOOTHING)
 
-    bodyVelocity.Velocity = currentVelocity
-    bodyGyro.CFrame = camera.CFrame
+    -- Extra safety to ensure bodyVelocity wasn't destroyed mid-flight
+    if bodyVelocity and bodyVelocity.Parent then
+        bodyVelocity.Velocity = currentVelocity
+    end
+    if bodyGyro and bodyGyro.Parent then
+        bodyGyro.CFrame = camera.CFrame
+    end
 end)
