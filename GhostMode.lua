@@ -6,9 +6,14 @@ local isInvisible = false
 local originalTransparencies = {}
 
 invisBtn.MouseButton1Click:Connect(function()
-    isInvisible = not isInvisible
     local character = player.Character
-    if not character then return end
+    -- SAFELY CHECK: If character or root part is missing, don't break
+    if not character or not character:FindFirstChild("HumanoidRootPart") then 
+        warn("Character not fully loaded yet!")
+        return 
+    end
+
+    isInvisible = not isInvisible
 
     if isInvisible then
         invisBtn.Text = "Ghost Mode (Invis): ON"
